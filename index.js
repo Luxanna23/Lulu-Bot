@@ -84,7 +84,11 @@ function getSortedLeaderboard() {
 
 function formatLeaderboardEntry(username, tier, division, lp, index) {
   const tierText = tier ?? "Unranked";
-  const divisionText = division ? ` ${division}` : "";
+  let divisionText = "";
+  if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(tier)) {
+    divisionText = division ? ` ${division}` : "";
+  }
+  
   const lpText = lp ? ` - ${lp} LP` : "";
 
   return `${index + 1}. ${username} : ${tierText}${divisionText}${lpText}`;
@@ -125,7 +129,10 @@ client.on('messageCreate', async message => {
         savePlayers();
 
         const tierText = rank.tier ?? "Unranked";
-        const divisionText = rank.division ? ` ${rank.division}` : "";
+        let divisionText = "";
+        if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(rank.tier)) {
+          divisionText = rank.division ? ` ${rank.division}` : "";
+        }
         const lpText = rank.lp ? ` (${rank.lp} LP)` : "";
         const reply = message.reply(`Ajouté ${username}#${tag} avec rang ${tierText}${divisionText}${lpText}`);
         await updateRanks();
