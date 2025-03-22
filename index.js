@@ -48,8 +48,8 @@ async function getRank(puuid) {
 }
 
 async function updateRanks() {
-    for (const [username, { tag, puuid }] of players) {
-        players.get(username).rank = await getRank(puuid);
+    for (const [puuid] of players) {
+        players.get(puuid).rank = await getRank(puuid);
     }
     publishLeaderboard();
 }
@@ -85,9 +85,9 @@ function getSortedLeaderboard() {
 function formatLeaderboardEntry(username, tier, division, lp, index) {
   const tierText = tier ?? "Unranked";
   const divisionText = division ? ` ${division}` : "";
-  const lpText = lp ? ` (${lp} LP)` : "";
+  const lpText = lp ? ` - ${lp} LP` : "";
 
-  return `${index + 1}. ${username} - ${tierText}${divisionText}${lpText}`;
+  return `${index + 1}. ${username} : ${tierText}${divisionText}${lpText}`;
 }
 
 async function publishLeaderboard() {
@@ -95,18 +95,18 @@ async function publishLeaderboard() {
     if (!channel) return;
     
     let leaderboard = getSortedLeaderboard()
-    .map(([username, { rank }], index) => 
+    .map(([ppuid, { username, rank }], index) => 
         formatLeaderboardEntry(username, rank.tier, rank.division, rank.lp, index)
     )
     .join("\n");
     
     if (!data.channelId) {
-      const message = await channel.send(`**Classement :**\n${leaderboard}`);
+      const message = await channel.send(`🏆 **Classement :**\n${leaderboard}`);
       data.channelId = message.id;
       saveData();
     } else {
       const message = await channel.messages.fetch(data.channelId);
-      if (message) await message.edit(`**Classement :**\n${leaderboard}`);
+      if (message) await message.edit(`🏆 **Classement :**\n${leaderboard}`);
     }
 }
 
@@ -121,7 +121,7 @@ client.on('messageCreate', async message => {
         if (!puuid) return message.reply('Joueur non trouvé.');
         
         const rank = await getRank(puuid);
-        players.set(username, { tag, puuid, rank });
+        players.set(puuid, { tag, username, rank });
         savePlayers();
 
         const tierText = rank.tier ?? "Unranked";
