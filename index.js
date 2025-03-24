@@ -69,8 +69,8 @@ const ranks = [
 
 function getSortedLeaderboard() {
   return [...players.entries()].sort((a, b) => {
-      const rankA = `${a[1].rank.tier ?? "UNRANKED"} ${a[1].rank.division ?? ""}`.trim();
-      const rankB = `${b[1].rank.tier ?? "UNRANKED"} ${b[1].rank.division ?? ""}`.trim();
+      const rankA = `${a[1].rank?.tier ?? "UNRANKED"} ${a[1].rank.division ?? ""}`.trim();
+      const rankB = `${b[1].rank?.tier ?? "UNRANKED"} ${b[1].rank.division ?? ""}`.trim();
 
       const indexA = ranks.indexOf(rankA);
       const indexB = ranks.indexOf(rankB);
