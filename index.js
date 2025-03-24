@@ -50,7 +50,7 @@ async function getRank(puuid) {
 
 async function updateRanks() {
     for (const [puuid] of players) {
-        players.get(puuid).rank? = await getRank(puuid);
+        players.get(puuid).rank = await getRank(puuid);
     }
     publishLeaderboard();
 }
