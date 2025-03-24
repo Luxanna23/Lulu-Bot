@@ -7,7 +7,8 @@ import fs from 'fs';
 dotenv.config();
 
 const client = new Client({
-    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent]
+    intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+    shards: 'auto'
 });
 
 const RIOT_API_KEY = process.env.RIOT_API_KEY;
