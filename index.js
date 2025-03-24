@@ -50,7 +50,7 @@ async function getRank(puuid) {
 
 async function updateRanks() {
     for (const [puuid] of players) {
-        players.get(puuid).rank = await getRank(puuid);
+        players.get(puuid).rank? = await getRank(puuid);
     }
     publishLeaderboard();
 }
@@ -79,7 +79,7 @@ function getSortedLeaderboard() {
       if (indexA !== indexB) return indexA - indexB;
 
       // Comparaison par LP si même rang
-      return (b[1].rank.lp ?? 0) - (a[1].rank.lp ?? 0);
+      return (b[1].rank?.lp ?? 0) - (a[1].rank?.lp ?? 0);
   });
 }
 
@@ -101,7 +101,7 @@ async function publishLeaderboard() {
     
     let leaderboard = getSortedLeaderboard()
     .map(([ppuid, { username, rank }], index) => 
-        formatLeaderboardEntry(username, rank.tier, rank.division, rank.lp, index)
+        formatLeaderboardEntry(username, rank?.tier, rank?.division, rank?.lp, index)
     )
     .join("\n");
     
@@ -129,12 +129,12 @@ client.on('messageCreate', async message => {
         players.set(puuid, { tag, username, rank });
         savePlayers();
 
-        const tierText = rank.tier ?? "Unranked";
+        const tierText = rank?.tier ?? "Unranked";
         let divisionText = "";
-        if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(rank.tier)) {
-          divisionText = rank.division ? ` ${rank.division}` : "";
+        if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(rank?.tier)) {
+          divisionText = rank?.division ? ` ${rank?.division}` : "";
         }
-        const lpText = rank.lp ? ` (${rank.lp} LP)` : "";
+        const lpText = rank?.lp ? ` (${rank?.lp} LP)` : "";
         const reply = message.reply(`Ajouté ${username}#${tag} avec rang ${tierText}${divisionText}${lpText}`);
         await updateRanks();
 
