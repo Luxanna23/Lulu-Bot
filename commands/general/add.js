@@ -142,7 +142,11 @@ function getSortedLeaderboard() {
     const indexA = ranks.indexOf(rankA);
     const indexB = ranks.indexOf(rankB);
 
-    return indexA - indexB;
+    // Comparaison par rang
+    if (indexA !== indexB) return indexA - indexB;
+
+    // Comparaison par LP si même rang
+    return (b[1].rank.lp ?? 0) - (a[1].rank.lp ?? 0);
   });
 }
 
