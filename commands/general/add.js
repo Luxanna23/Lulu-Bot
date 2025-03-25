@@ -32,7 +32,11 @@ export async function execute(interaction) {
   const username = interaction.options.getString("username");
   const tag = interaction.options.getString("tag");
   const puuid = await getSummonerId(username, tag);
-  if (!puuid) return interaction.reply({ content: "Joueur non trouvé", flags: MessageFlags.Ephemeral });
+  if (!puuid)
+    return interaction.reply({
+      content: "Joueur non trouvé",
+      flags: MessageFlags.Ephemeral,
+    });
 
   const rank = await getRank(puuid);
   players.set(puuid, { tag, username, rank });
@@ -43,10 +47,11 @@ export async function execute(interaction) {
   if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(rank?.tier)) {
     divisionText = rank.division ? ` ${rank.division}` : "";
   }
-  const lpText = rank.lp ? ` (${rank.lp} LP)` : "";
-  interaction.reply(
-    { content: `Added ${username}#${tag} with rank ${tierText}${divisionText}${lpText}`, flags: MessageFlags.Ephemeral }
-  );
+  const lpText = rank.lp ? ` - ${rank.lp} LP` : "";
+  interaction.reply({
+    content: `Added ${username}#${tag} with rank ${tierText}${divisionText}${lpText}`,
+    flags: MessageFlags.Ephemeral,
+  });
   await updateRanks();
 }
 
@@ -122,15 +127,15 @@ const ranks = [
   "IRON II",
   "IRON III",
   "IRON IV",
-  "UNRANKED",
+  "Unranked",
 ];
 
 function getSortedLeaderboard() {
   return [...players.entries()].sort((a, b) => {
-    const rankA = `${a[1].rank?.tier ?? "UNRANKED"} ${
+    const rankA = `${a[1].rank?.tier ?? "Unranked"} ${
       a[1].rank?.division ?? ""
     }`.trim();
-    const rankB = `${b[1].rank?.tier ?? "UNRANKED"} ${
+    const rankB = `${b[1].rank?.tier ?? "Unranked"} ${
       b[1].rank?.division ?? ""
     }`.trim();
 
@@ -141,18 +146,26 @@ function getSortedLeaderboard() {
   });
 }
 
+function formatLeaderboardEntry(username, tier, division, lp, index) {
+  const tierText = tier ?? "Unranked";
+  let divisionText = "";
+  if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(tier)) {
+    divisionText = division ? ` ${division}` : "";
+  }
+
+  const lpText = lp ? ` - ${lp} LP` : "";
+
+  return `${index + 1}. ${username} : ${tierText}${divisionText}${lpText}`;
+}
+
 async function publishLeaderboard() {
   const channel = await client.channels.fetch(DEFAULT_CHANNEL_ID);
   if (!channel) return;
 
   const leaderboard = getSortedLeaderboard()
-    .map(([puuid, player], index) => {
-      const rank = `${player.rank?.tier ?? "UNRANKED"} ${
-        player.rank?.division ?? ""
-      }`.trim();
-      const lp = player.rank?.lp ? ` - ${player.rank.lp} LP` : "";
-      return `${index + 1}. ${player.username} : ${rank}${lp}`;
-    })
+    .map(([ppuid, { username, rank }], index) =>
+      formatLeaderboardEntry(username, rank.tier, rank.division, rank.lp, index)
+    )
     .join("\n");
 
   if (config.messageId) {
