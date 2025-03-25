@@ -164,7 +164,7 @@ async function publishLeaderboard() {
 
   const leaderboard = getSortedLeaderboard()
     .map(([ppuid, { username, rank }], index) =>
-      formatLeaderboardEntry(username, rank.tier, rank.division, rank.lp, index)
+      formatLeaderboardEntry(username, rank?.tier, rank?.division, rank?.lp, index)
     )
     .join("\n");
 
