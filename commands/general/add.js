@@ -151,7 +151,7 @@ const ranks = [
 ];
 
 //pour les emotes
-const rankEmojiNameByTier = {
+const rankEmojiMarkupByTier = {
   IRON: "<:iron:1355271339526717661>",
   BRONZE: "<:bronze:1355271334674042960>",
   SILVER: "<:silver:1355271338163441664>",
