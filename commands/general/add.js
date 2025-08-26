@@ -152,29 +152,22 @@ const ranks = [
 
 //pour les emotes
 const rankEmojiNameByTier = {
-  IRON: "iron",
-  BRONZE: "bronze",
-  SILVER: "silver",
-  GOLD: "gold",
-  PLATINUM: "platinum",
-  EMERALD: "emerald",
-  DIAMOND: "diamond",
-  MASTER: "master",
-  GRANDMASTER: "grandmaster",
-  CHALLENGER: "challenger",
-  UNRANKED: "unranked"
+  IRON: "<:iron:1355271339526717661>",
+  BRONZE: "<:bronze:1355271334674042960>",
+  SILVER: "<:silver:1355271338163441664>",
+  GOLD: "<:gold:1355271332727619825>",
+  PLATINUM: "<:platinum:1355271336737374329>",
+  EMERALD: "<:emerald:1355272015199731942>",
+  DIAMOND: "<:diamond:1355271331301818389>",
+  MASTER: "<:master:1355271340835340410>",
+  GRANDMASTER: "<:grandmaster:1355271343997714583>",
+  CHALLENGER: "<:challenger:1355271342311866539>",
+  UNRANKED: "<:unranked:1355984490534535229>"
 };
 
-function resolveRankEmoji(guild, tierRaw) {
-  const tier = (tierRaw || "UNRANKED").toUpperCase();
-  const name = rankEmojiNameByTier[tier] || "unranked";
-  if (!guild) return `:${name}:`; // fallback texte si pas de guild (normalement jamais)
-
-  const emoji = guild.emojis.cache.find(e => e.name.toLowerCase() === name.toLowerCase());
-  if (!emoji) return `:${name}:`; // fallback si l'emoji n'existe pas / mauvais nom
-
-  // animated ou non
-  return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+function resolveRankEmoji(_guild, tierRaw) {
+  const key = String(tierRaw || "UNRANKED").toUpperCase();
+  return rankEmojiMarkupByTier[key] || rankEmojiMarkupByTier.UNRANKED;
 }
 
 function getSortedLeaderboard() {
@@ -246,7 +239,7 @@ async function publishLeaderboard() {
       .setTitle("🏆 Classement :")
       .setDescription(description)
       .setColor(0x2b2d31)
-      .setFooter({ text: `Lulu dev — Page ${i + 1}/${pages.length}` })
+      .setFooter({ text: `Lulu Bot — Page ${i + 1}/${pages.length}` })
       .setTimestamp(new Date());
 
     const existingId = config.messageIds[i];
