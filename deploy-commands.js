@@ -44,7 +44,7 @@ const rest = new REST().setToken(DISCORD_BOT_TOKEN);
         console.log(`Successfully reloaded ${data.length} application (/) commands.`);
     } catch (error) {
         console.error(error);
+    } finally {
+        process.exit(0);
     }
 })();
-
-process.exit(0);

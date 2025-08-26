@@ -1,4 +1,4 @@
-import { MessageFlags, SlashCommandBuilder } from "discord.js";
+import { MessageFlags, SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import dotenv from "dotenv";
 import fs from "fs";
 import fetch from "node-fetch";
@@ -38,16 +38,17 @@ export async function execute(interaction) {
       flags: MessageFlags.Ephemeral,
     });
 
-  const rank = await getRank(puuid);
+  const rank = await getRank(puuid, tag);
   players.set(puuid, { tag, username, rank });
   savePlayers();
 
-  const tierText = rank.tier ?? "Unranked";
+  const tierText = rank?.tier ?? "Unranked";
   let divisionText = "";
   if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(rank?.tier)) {
-    divisionText = rank.division ? ` ${rank.division}` : "";
+    divisionText = rank?.division ? ` ${rank.division}` : "";
   }
-  const lpText = rank.lp ? ` - ${rank.lp} LP` : "";
+  const lpText = rank?.lp ? ` - ${rank.lp} LP` : "";
+
   interaction.reply({
     content: `Added ${username}#${tag} with rank ${tierText}${divisionText}${lpText}`,
     flags: MessageFlags.Ephemeral,
@@ -63,34 +64,53 @@ async function getSummonerId(username, tag) {
   return data.puuid;
 }
 
-async function getRank(puuid) {
-  const url = `https://euw1.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
-  const response = await fetch(url);
-  if (!response.ok) return null;
-  const data = await response.json();
-  const rankedData = data.find(
-    (entry) => entry.queueType === "RANKED_SOLO_5x5"
-  );
-  // return rankedData ? `${rankedData.tier} ${rankedData.rank} (${rankedData.leaguePoints} LP)` : 'Unranked';
+function platformFromTag(tag) {
+  const t = String(tag || "").toUpperCase();
+  if (t.startsWith("EUW")) return "euw1";
+  if (t.startsWith("EUNE")) return "eun1";
+  if (t === "NA" || t === "NA1" || t.startsWith("NA")) return "na1";
+  if (t.startsWith("BR")) return "br1";
+  if (t === "LAN" || t.startsWith("LA1")) return "la1";
+  if (t === "LAS" || t.startsWith("LA2")) return "la2";
+  if (t.startsWith("OCE") || t === "OC1") return "oc1";
+  if (t.startsWith("TR")) return "tr1";
+  if (t.startsWith("RU")) return "ru";
+  if (t.startsWith("KR")) return "kr";
+  if (t.startsWith("JP")) return "jp1";
+  return "euw1";
+}
 
-  if (rankedData) {
+async function getRank(puuid,tag) {
+  const platform = platformFromTag(tag);
+  try {
+    const url = `https://${platform}.api.riotgames.com/lol/league/v4/entries/by-puuid/${puuid}?api_key=${RIOT_API_KEY}`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      return { tier: null, division: null, lp: null };
+    }
+
+    const data = await response.json();
+    const rankedData = data.find(e => e.queueType === "RANKED_SOLO_5x5");
+
+    if (!rankedData) {
+      return { tier: null, division: null, lp: null };
+    }
+
     return {
       tier: rankedData.tier,
       division: rankedData.rank,
       lp: rankedData.leaguePoints,
     };
+  } catch {
+    return { tier: null, division: null, lp: null };
   }
-
-  return {
-    tier: null,
-    division: null,
-    lp: null,
-  };
 }
 
+
 async function updateRanks() {
-  for (const [puuid] of players) {
-    players.get(puuid).rank = await getRank(puuid);
+  for (const [puuid, data] of players) {
+    players.get(puuid).rank = await getRank(puuid, data.tag);
   }
   publishLeaderboard();
 }
@@ -130,6 +150,33 @@ const ranks = [
   "Unranked",
 ];
 
+//pour les emotes
+const rankEmojiNameByTier = {
+  IRON: "iron",
+  BRONZE: "bronze",
+  SILVER: "silver",
+  GOLD: "gold",
+  PLATINUM: "platinum",
+  EMERALD: "emerald",
+  DIAMOND: "diamond",
+  MASTER: "master",
+  GRANDMASTER: "grandmaster",
+  CHALLENGER: "challenger",
+  UNRANKED: "unranked"
+};
+
+function resolveRankEmoji(guild, tierRaw) {
+  const tier = (tierRaw || "UNRANKED").toUpperCase();
+  const name = rankEmojiNameByTier[tier] || "unranked";
+  if (!guild) return `:${name}:`; // fallback texte si pas de guild (normalement jamais)
+
+  const emoji = guild.emojis.cache.find(e => e.name.toLowerCase() === name.toLowerCase());
+  if (!emoji) return `:${name}:`; // fallback si l'emoji n'existe pas / mauvais nom
+
+  // animated ou non
+  return emoji.animated ? `<a:${emoji.name}:${emoji.id}>` : `<:${emoji.name}:${emoji.id}>`;
+}
+
 function getSortedLeaderboard() {
   return [...players.entries()].sort((a, b) => {
     const rankA = `${a[1].rank?.tier ?? "Unranked"} ${
@@ -150,7 +197,7 @@ function getSortedLeaderboard() {
   });
 }
 
-function formatLeaderboardEntry(username, tier, division, lp, index) {
+function formatLeaderboardEntry(username, tier, division, lp, index,  icon = "") {
   const tierText = tier ?? "Unranked";
   let divisionText = "";
   if (!["MASTER", "GRANDMASTER", "CHALLENGER"].includes(tier)) {
@@ -158,29 +205,83 @@ function formatLeaderboardEntry(username, tier, division, lp, index) {
   }
 
   const lpText = lp ? ` - ${lp} LP` : "";
+  const iconPart = icon ? `${icon} ` : "";
 
-  return `${index + 1}. ${username} : ${tierText}${divisionText}${lpText}`;
+  return `${index + 1}. ${iconPart}${username} : ${tierText}${divisionText}${lpText}`;
 }
 
 async function publishLeaderboard() {
   const channel = await client.channels.fetch(DEFAULT_CHANNEL_ID);
   if (!channel) return;
 
-  const leaderboard = getSortedLeaderboard()
-    .map(([ppuid, { username, rank }], index) =>
-      formatLeaderboardEntry(username, rank?.tier, rank?.division, rank?.lp, index)
-    )
-    .join("\n");
+  const guild = channel.guild;
 
-  if (config.messageId) {
-    const message = await channel.messages.fetch(config.messageId);
-    message.edit(`🏆 **Classement :**\n${leaderboard}`);
-  } else {
-    const message = await channel.send(`🏆 **Classement :**\n${leaderboard}`);
-    config.messageId = message.id;
-    saveConfig();
+  const lines = getSortedLeaderboard().map(([_, { username, rank }], index) => {
+    const icon = resolveRankEmoji(guild, rank?.tier || "UNRANKED");
+    return formatLeaderboardEntry(username, rank?.tier, rank?.division, rank?.lp, index, icon);
+  });
+
+  // Découper en pages 
+  let pages = paginateByChars(lines, 4096);
+  if (pages.length === 0) {
+    pages = [["_Aucun joueur pour l’instant_"]];
   }
+
+  // 3) Upgrade config : passer d'un seul message à plusieurs (compat rétro)
+  if (!Array.isArray(config.messageIds)) {
+    config.messageIds = [];
+    if (config.messageId) config.messageIds.push(config.messageId);
+    delete config.messageId;
+  }
+
+  // créer chaque page 
+  const newMessageIds = [];
+  for (let i = 0; i < pages.length; i++) {
+    let description = pages[i].join("\n");
+    if (description.length > 4096) {
+      description = description.slice(0, 4093) + "...";
+    }
+
+    const embed = new EmbedBuilder()
+      .setTitle("🏆 Classement :")
+      .setDescription(description)
+      .setColor(0x2b2d31)
+      .setFooter({ text: `Lulu dev — Page ${i + 1}/${pages.length}` })
+      .setTimestamp(new Date());
+
+    const existingId = config.messageIds[i];
+    if (existingId) {
+      try {
+        const msg = await channel.messages.fetch(existingId);
+        const edited = await msg.edit({ content: "", embeds: [embed] });
+        newMessageIds.push(edited.id);
+        continue;
+      } catch {
+      }
+    }
+
+    const sent = await channel.send({ embeds: [embed] });
+    newMessageIds.push(sent.id);
+  }
+
+  // 5) Supprimer les anciennes pages en trop (si moins de pages maintenant)
+  if (config.messageIds.length > pages.length) {
+    const extras = config.messageIds.slice(pages.length);
+    for (const id of extras) {
+      try {
+        const msg = await channel.messages.fetch(id);
+        await msg.delete();
+      } catch {
+        // déjà supprimé / introuvable : on ignore
+      }
+    }
+  }
+
+  // 6) Sauvegarder les nouveaux IDs de messages
+  config.messageIds = newMessageIds;
+  saveConfig();
 }
+
 
 function loadPlayers() {
   if (!fs.existsSync("players.json")) return new Map();
@@ -206,3 +307,48 @@ function loadConfig() {
 function saveConfig() {
   fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
 }
+
+//pagination des embed 
+function paginateByChars(lines, max = 4096) {
+  const pages = [];
+  let current = [];
+  let len = 0;
+
+  for (const line of lines) {
+    // +1 pour le saut de ligne quand on join("\n"), sauf pour la 1re ligne
+    const addLen = (current.length ? 1 : 0) + line.length;
+
+    if (addLen > max) {
+      // Cas extrême: une seule ligne dépasse la limite → on tronque
+      const sliceLen = Math.max(0, max - (current.length ? 1 : 0));
+      const truncated = line.slice(0, sliceLen || max - 1);
+      if (current.length) pages.push(current);
+      pages.push([truncated]);
+      current = [];
+      len = 0;
+      continue;
+    }
+
+    if (len + addLen > max) {
+      pages.push(current);
+      current = [line];
+      len = line.length;
+    } else {
+      current.push(line);
+      len += addLen;
+    }
+  }
+
+  if (current.length) pages.push(current);
+  return pages;
+}
+
+// Rafraîchissement auto du classement
+const AUTO_REFRESH_MS = 15 * 60 * 1000; 
+
+client.once('ready', () => {
+  console.log(`[Leaderboard] Auto-refresh every ${AUTO_REFRESH_MS / 60000} min`);
+  setInterval(() => {
+    updateRanks().catch(err => console.error('[Leaderboard] refresh error:', err));
+  }, AUTO_REFRESH_MS);
+});

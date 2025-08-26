@@ -64,5 +64,6 @@ client.on(Events.InteractionCreate, async interaction => {
 });
 
 client.login(BOT_TOKEN);
+console.log('Bot is starting...');
 
 export { client };
