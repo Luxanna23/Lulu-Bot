@@ -277,28 +277,28 @@ async function publishLeaderboard() {
 
 
 function loadPlayers() {
-  if (!fs.existsSync("data/players.json")) return new Map();
-  const rawData = fs.readFileSync("data/players.json");
+  if (!fs.existsSync("players.json")) return new Map();
+  const rawData = fs.readFileSync("players.json");
   return new Map(Object.entries(JSON.parse(rawData)));
 }
 
-// Sauvegarder les données
+// Sauvegarder les données dans players.json
 function savePlayers() {
   fs.writeFileSync(
-    "data/players.json",
+    "players.json",
     JSON.stringify(Object.fromEntries(players), null, 2)
   );
 }
 
-// Charger la config 
+// Charger la config depuis config.json
 function loadConfig() {
-  if (!fs.existsSync("data/config.json")) return {};
-  return JSON.parse(fs.readFileSync("data/config.json"));
+  if (!fs.existsSync("config.json")) return {};
+  return JSON.parse(fs.readFileSync("config.json"));
 }
 
-// Sauvegarder la config 
+// Sauvegarder la config dans config.json
 function saveConfig() {
-  fs.writeFileSync("data/config.json", JSON.stringify(config, null, 2));
+  fs.writeFileSync("config.json", JSON.stringify(config, null, 2));
 }
 
 //pagination des embed 
